@@ -1,17 +1,13 @@
 // src/screens/Preview/PreviewScreen.tsx
 import React from 'react';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
-import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import styles from './style';
 import { RootStackParamList } from '../../types/navigationTypes';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import api from '../../config/api';
+import UploadProgressScreen from '../upload/uploadScreen';
 
 type PreviewScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -21,7 +17,7 @@ type PreviewScreenNavigationProp = NativeStackNavigationProp<
 interface FormData {
   fullName: string;
   asalSekolah: string;
-  tanggalLahir: string;
+  tglLahir: string;
   photo: string | null;
 }
 
@@ -33,9 +29,12 @@ const PreviewScreen = () => {
   const navigation = useNavigation<PreviewScreenNavigationProp>();
   const route = useRoute();
   const { formData } = route.params as RouteParams;
+  const [uploadProgress, setUploadProgress] = React.useState<number>(0);
+  const [isUploading, setIsUploading] = React.useState<boolean>(false);
 
-  const formatDate = (dateString: string) => {
-    const [day, month, year] = dateString.split('/');
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
     const monthNames = [
       'Januari',
       'Februari',
@@ -50,80 +49,139 @@ const PreviewScreen = () => {
       'November',
       'Desember',
     ];
-    return `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
+    return `${date.getDate().toString().padStart(2, '0').toUpperCase()} ${
+      monthNames[date.getMonth()]
+    } ${date.getFullYear()}`;
   };
 
-  const handleUpload = () => {
-    navigation.navigate('Response');
-  }
+  const handleUpload = async () => {
+    try {
+      setIsUploading(true);
+      setUploadProgress(0);
+
+      const data = new FormData();
+      data.append('fullName', formData.fullName);
+      data.append('asalSekolah', formData.asalSekolah);
+      data.append('tglLahir', formData.tglLahir);
+
+      if (formData.photo) {
+        data.append('photo', {
+          uri: formData.photo,
+          type: 'image/jpeg',
+          name: 'photo.jpg',
+        } as any);
+      }
+
+      const res = await api.post('/api/upload', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: progressEvent => {
+          if (progressEvent.total && progressEvent.loaded) {
+            const progress = Math.min(
+              progressEvent.loaded / progressEvent.total,
+              1,
+            );
+            setUploadProgress(progress);
+          } else {
+            const estimatedProgress = Math.min(
+              progressEvent.loaded / 1000000,
+              0.95,
+            );
+            setUploadProgress(estimatedProgress);
+          }
+        },
+      });
+
+      if (res.status === 200) {
+        setUploadProgress(1);
+        setTimeout(() => {
+          setIsUploading(false);
+          navigation.navigate('Response');
+        }, 300);
+      }
+    } catch (err: any) {
+      console.error('Upload error:', err.response?.data || err.message);
+      setUploadProgress(0);
+      setIsUploading(false);
+    }
+  };
+
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
+    <>
+      {isUploading ? (
+        <UploadProgressScreen progress={uploadProgress} />
+      ) : (
+        <ScrollView
+          style={styles.container}
+          showsVerticalScrollIndicator={false}
         >
-          <MaterialIcons name="arrow-back" size={26} color="#4B4DED" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Review Data Peserta</Text>
-      </View>
-
-      {/* Photo Section */}
-      <View style={styles.photoCard}>
-        {formData.photo ? (
-          <Image source={{ uri: formData.photo }} style={styles.photo} />
-        ) : (
-          <View style={styles.noPhoto}>
-            <MaterialIcons name="person" size={60} color="#4B4DED" />
-            <Text style={styles.noPhotoText}>Tidak ada foto</Text>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <MaterialIcons name="arrow-back" size={26} color="#4B4DED" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Review Data Peserta</Text>
           </View>
-        )}
-      </View>
 
-      {/* Data Section */}
-      <View style={styles.dataCard}>
-        <View style={styles.dataRow}>
-          <MaterialIcons name="badge" size={20} color="#4B4DED" />
-          <View style={styles.dataText}>
-            <Text style={styles.label}>Nama Lengkap</Text>
-            <Text style={styles.value}>{formData.fullName}</Text>
+          {/* Photo Section */}
+          <View style={styles.photoCard}>
+            {formData.photo ? (
+              <Image source={{ uri: formData.photo }} style={styles.photo} />
+            ) : (
+              <View style={styles.noPhoto}>
+                <MaterialIcons name="person" size={60} color="#4B4DED" />
+                <Text style={styles.noPhotoText}>Tidak ada foto</Text>
+              </View>
+            )}
           </View>
-        </View>
 
-        <View style={styles.dataRow}>
-          <MaterialIcons name="school" size={20} color="#4B4DED" />
-          <View style={styles.dataText}>
-            <Text style={styles.label}>Asal Sekolah</Text>
-            <Text style={styles.value}>{formData.asalSekolah}</Text>
+          {/* Data Section */}
+          <View style={styles.dataCard}>
+            <View style={styles.dataRow}>
+              <MaterialIcons name="badge" size={20} color="#4B4DED" />
+              <View style={styles.dataText}>
+                <Text style={styles.label}>Nama Lengkap</Text>
+                <Text style={styles.value}>{formData.fullName}</Text>
+              </View>
+            </View>
+
+            <View style={styles.dataRow}>
+              <MaterialIcons name="school" size={20} color="#4B4DED" />
+              <View style={styles.dataText}>
+                <Text style={styles.label}>Asal Sekolah</Text>
+                <Text style={styles.value}>{formData.asalSekolah}</Text>
+              </View>
+            </View>
+
+            <View style={styles.dataRow}>
+              <MaterialIcons name="event" size={20} color="#4B4DED" />
+              <View style={styles.dataText}>
+                <Text style={styles.label}>Tanggal Lahir</Text>
+                <Text style={styles.value}>
+                  {formatDate(formData.tglLahir)}
+                </Text>
+              </View>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.dataRow}>
-          <MaterialIcons name="event" size={20} color="#4B4DED" />
-          <View style={styles.dataText}>
-            <Text style={styles.label}>Tanggal Lahir</Text>
-            <Text style={styles.value}>
-              {formatDate(formData.tanggalLahir)}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Action Button */}
-      <TouchableOpacity
-        style={styles.uploadButton}
-        onPress={() => handleUpload()}
-        activeOpacity={0.8}
-      >
-        <MaterialIcons name="cloud-upload" size={22} color="#fff" />
-        <Text style={styles.uploadButtonText}> Upload ke Google Drive</Text>
-      </TouchableOpacity>
-    </ScrollView>
+          {/* Action Button */}
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={() => handleUpload()}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="cloud-upload" size={22} color="#fff" />
+            <Text style={styles.uploadButtonText}> Upload ke Google Drive</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+    </>
   );
 };
-
-
 
 export default PreviewScreen;

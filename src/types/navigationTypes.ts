@@ -7,7 +7,7 @@ export type RootStackParamList = {
     formData: {
       fullName: string;
       asalSekolah: string;
-      tanggalLahir: string;
+      tglLahir: string;
       photo: string | null;
     };
   };

@@ -17,13 +17,13 @@ import {
 } from 'react-native-image-picker';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigationTypes'; // sesuaikan path types
+import { RootStackParamList } from '../../types/navigationTypes';
 import styles from './style';
 
 interface FormData {
   fullName: string;
   asalSekolah: string;
-  tanggalLahir: string;
+  tglLahir: string;
   photo: string | null;
 }
 
@@ -38,7 +38,7 @@ const Form = () => {
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     asalSekolah: '',
-    tanggalLahir: '',
+    tglLahir: '',
     photo: null,
   });
 
@@ -48,7 +48,7 @@ const Form = () => {
   useFocusEffect(
     React.useCallback(() => {
       setFormData(prev => ({ ...prev, photo: null }));
-    }, [])
+    }, []),
   );
 
   const handleChange = (name: keyof FormData, value: string) => {
@@ -81,7 +81,8 @@ const Form = () => {
           PermissionsAndroid.PERMISSIONS.CAMERA,
           {
             title: 'Izin Kamera',
-            message: 'Aplikasi membutuhkan akses kamera untuk mengambil foto peserta',
+            message:
+              'Aplikasi membutuhkan akses kamera untuk mengambil foto peserta',
             buttonNeutral: 'Tanya Nanti',
             buttonNegative: 'Batal',
             buttonPositive: 'OK',
@@ -103,10 +104,10 @@ const Form = () => {
       newErrors.fullName = 'Nama Lengkap wajib diisi';
     if (!formData.asalSekolah.trim())
       newErrors.asalSekolah = 'Asal Sekolah wajib diisi';
-    if (!formData.tanggalLahir.trim()) {
-      newErrors.tanggalLahir = 'Tanggal Lahir wajib diisi';
-    } else if (formData.tanggalLahir.length !== 10) {
-      newErrors.tanggalLahir = 'Format tanggal harus DD/MM/YYYY';
+    if (!formData.tglLahir.trim()) {
+      newErrors.tglLahir = 'Tanggal Lahir wajib diisi';
+    } else if (formData.tglLahir.length !== 10) {
+      newErrors.tglLahir = 'Format tanggal harus DD/MM/YYYY';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -115,7 +116,10 @@ const Form = () => {
   // Ambil foto
   const takePhoto = async () => {
     if (!validateForm()) {
-      Alert.alert('Peringatan', 'Mohon lengkapi semua data sebelum mengambil foto');
+      Alert.alert(
+        'Peringatan',
+        'Mohon lengkapi semua data sebelum mengambil foto',
+      );
       return;
     }
 
@@ -193,20 +197,27 @@ const Form = () => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Tanggal Lahir *</Text>
           <TextInput
-            value={formData.tanggalLahir}
+            value={formData.tglLahir}
             onChangeText={text => {
               const formatted = formatDateInput(text);
-              handleChange('tanggalLahir', formatted);
+              handleChange('tglLahir', formatted);
+
+              // kalau panjang sudah 10 (DD/MM/YYYY), convert ke ISO
+              if (formatted.length === 10) {
+                const [day, month, year] = formatted.split('/');
+                const iso = `${year}-${month}-${day}`; // YYYY-MM-DD
+                handleChange('tglLahir', iso);
+              }
             }}
             placeholder="DD/MM/YYYY"
-            style={[styles.input, errors.tanggalLahir && styles.inputError]}
+            style={[styles.input, errors.tglLahir && styles.inputError]}
             placeholderTextColor="#999"
             keyboardType="numeric"
             maxLength={10}
           />
           <Text style={styles.helperText}>Format: Tanggal/Bulan/Tahun</Text>
-          {errors.tanggalLahir && (
-            <Text style={styles.errorText}>{errors.tanggalLahir}</Text>
+          {errors.tglLahir && (
+            <Text style={styles.errorText}>{errors.tglLahir}</Text>
           )}
         </View>
 

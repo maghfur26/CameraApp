@@ -1,12 +1,6 @@
 // src/screens/ResponseScreen.tsx
 import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -14,11 +8,19 @@ import { RootStackParamList } from '../../types/navigationTypes';
 import styles from './style';
 
 const ResponseScreen = () => {
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList, 'Response'>>();
+  const navigation =
+    useNavigation<StackNavigationProp<RootStackParamList, 'Response'>>();
 
   // Animated values
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  const hanleClick = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
+  };
 
   useEffect(() => {
     Animated.sequence([
@@ -65,14 +67,12 @@ const ResponseScreen = () => {
       <TouchableOpacity
         style={styles.button}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('Home')}
+        onPress={hanleClick}
       >
         <Text style={styles.buttonText}>Daftarkan Peserta Lain</Text>
       </TouchableOpacity>
     </View>
   );
 };
-
-
 
 export default ResponseScreen;

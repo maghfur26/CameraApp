@@ -5,11 +5,28 @@ import * as Progress from 'react-native-progress';
 import styles from './style';
 import Logo from '../../../assets/images/logo.png';
 import { Image } from 'react-native';
+import { getToken } from '../../utils/authStorage';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigationTypes';
 
 const LoadingScreen = () => {
   const [progress, setProgress] = useState<number>(0);
 
   useEffect(() => {
+    const checkTokenAndNavigate = async () => {
+      const token = await getToken();
+      const navigation =
+        useNavigation<
+          NativeStackNavigationProp<RootStackParamList, 'Loading'>
+        >();
+      if (token) {
+        navigation.navigate('Home');
+      }
+    };
+
+    checkTokenAndNavigate();
+
     let interval = setInterval(() => {
       setProgress(prev => {
         const next = prev + 0.08;

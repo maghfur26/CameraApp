@@ -59,5 +59,10 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 12,
   },
+  error: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 4,
+  },
 });
 export default styles;
