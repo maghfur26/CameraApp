@@ -1,23 +1,36 @@
-import * as keychain from 'react-native-keychain';
+import keychain from 'react-native-keychain';
 
 // simpan accessToken & refreshToken
 export const saveTokens = async (accessToken: string, refreshToken: string) => {
-  await keychain.setGenericPassword(accessToken, refreshToken);
+  await keychain.setGenericPassword(accessToken, refreshToken, {
+    service: 'authTokens',
+  });
 };
 
-// ambil accessToken
+export const saveId = async (id: string) => {
+  await keychain.setGenericPassword(id, '', { service: 'userId' });
+};
+
+export const getId = async (): Promise<string | null> => {
+  const credentials = await keychain.getGenericPassword({ service: 'userId' });
+  return credentials ? credentials.username : null;
+};
+
 export const getAccessToken = async (): Promise<string | null> => {
-  const credentials = await keychain.getGenericPassword();
-  return credentials ? credentials.username : null; // username = accessToken
+  const credentials = await keychain.getGenericPassword({
+    service: 'authTokens',
+  });
+  return credentials ? credentials.username : null;
 };
 
-// ambil refreshToken
 export const getRefreshToken = async (): Promise<string | null> => {
-  const credentials = await keychain.getGenericPassword();
-  return credentials ? credentials.password : null; // password = refreshToken
+  const credentials = await keychain.getGenericPassword({
+    service: 'authTokens',
+  });
+  return credentials ? credentials.password : null;
 };
 
-// hapus token
 export const clearTokens = async () => {
-  await keychain.resetGenericPassword();
+  await keychain.resetGenericPassword({ service: 'authTokens' });
+  await keychain.resetGenericPassword({ service: 'userId' });
 };

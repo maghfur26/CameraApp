@@ -2,7 +2,7 @@ import { View, Text, Image } from 'react-native';
 import Logo from '../../../assets/images/logo.png';
 import styles from './styles';
 import Form from '../../components/form/form';
-import Header from '../../components/header/header';
+import Header from '../../components/drawer/drawer';
 import { useFocusEffect } from '@react-navigation/native';
 import { getAccessToken } from '../../utils/authStorage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

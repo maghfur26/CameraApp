@@ -1,4 +1,3 @@
-// Form.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -23,7 +22,7 @@ import styles from './style';
 interface FormData {
   fullName: string;
   asalSekolah: string;
-  tglLahir: string;
+  tglLahir: string; // ISO YYYY-MM-DD
   photo: string | null;
 }
 
@@ -44,7 +43,7 @@ const Form = () => {
 
   const [errors, setErrors] = useState<Partial<FormData>>({});
 
-  // Reset hanya photo ketika kembali dari Preview
+  // Reset photo saat kembali dari Preview
   useFocusEffect(
     React.useCallback(() => {
       setFormData(prev => ({ ...prev, photo: null }));
@@ -58,22 +57,23 @@ const Form = () => {
     }
   };
 
-  // Format tanggal otomatis
-  const formatDateInput = (text: string): string => {
+  // Format input tanggal otomatis DD/MM/YYYY
+  const formatDateInput = (text: string) => {
     const numbers = text.replace(/\D/g, '');
+    let formatted = '';
     if (numbers.length <= 2) {
-      return numbers;
+      formatted = numbers;
     } else if (numbers.length <= 4) {
-      return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
+      formatted = `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
     } else {
-      return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(
+      formatted = `${numbers.slice(0, 2)}/${numbers.slice(
+        2,
         4,
-        8,
-      )}`;
+      )}/${numbers.slice(4, 8)}`;
     }
+    return formatted;
   };
 
-  // Request camera permission untuk Android
   const requestCameraPermission = async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
       try {
@@ -97,7 +97,6 @@ const Form = () => {
     return true; // iOS auto handle
   };
 
-  // Validasi form
   const validateForm = () => {
     const newErrors: Partial<FormData> = {};
     if (!formData.fullName.trim())
@@ -106,14 +105,17 @@ const Form = () => {
       newErrors.asalSekolah = 'Asal Sekolah wajib diisi';
     if (!formData.tglLahir.trim()) {
       newErrors.tglLahir = 'Tanggal Lahir wajib diisi';
-    } else if (formData.tglLahir.length !== 10) {
-      newErrors.tglLahir = 'Format tanggal harus DD/MM/YYYY';
+    } else {
+      // regex ISO YYYY-MM-DD
+      const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!isoRegex.test(formData.tglLahir)) {
+        newErrors.tglLahir = 'Format tanggal harus YYYY-MM-DD';
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Ambil foto
   const takePhoto = async () => {
     if (!validateForm()) {
       Alert.alert(
@@ -143,13 +145,8 @@ const Form = () => {
         Alert.alert('Error', 'Gagal mengakses kamera');
       } else if (response.assets && response.assets[0]?.uri) {
         const imageUri = response.assets[0].uri;
-
-        // langsung navigate ke PreviewScreen dengan data
         navigation.navigate('Preview', {
-          formData: {
-            ...formData,
-            photo: imageUri,
-          },
+          formData: { ...formData, photo: imageUri },
         });
       }
     });
@@ -163,7 +160,7 @@ const Form = () => {
           Mohon lengkapi data peserta dengan benar
         </Text>
 
-        {/* Input Nama Lengkap */}
+        {/* Nama Lengkap */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Nama Lengkap *</Text>
           <TextInput
@@ -178,7 +175,7 @@ const Form = () => {
           )}
         </View>
 
-        {/* Input Asal Sekolah */}
+        {/* Asal Sekolah */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Asal Sekolah *</Text>
           <TextInput
@@ -193,20 +190,19 @@ const Form = () => {
           )}
         </View>
 
-        {/* Input Tanggal Lahir */}
+        {/* Tanggal Lahir */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Tanggal Lahir *</Text>
           <TextInput
-            value={formData.tglLahir}
+            value={formData.tglLahir.split('-').reverse().join('/')} // tampil DD/MM/YYYY
             onChangeText={text => {
               const formatted = formatDateInput(text);
-              handleChange('tglLahir', formatted);
-
-              // kalau panjang sudah 10 (DD/MM/YYYY), convert ke ISO
+              // convert ke ISO YYYY-MM-DD saat panjang 10
               if (formatted.length === 10) {
                 const [day, month, year] = formatted.split('/');
-                const iso = `${year}-${month}-${day}`; // YYYY-MM-DD
-                handleChange('tglLahir', iso);
+                handleChange('tglLahir', `${year}-${month}-${day}`);
+              } else {
+                handleChange('tglLahir', formatted); // sementara
               }
             }}
             placeholder="DD/MM/YYYY"
@@ -215,22 +211,21 @@ const Form = () => {
             keyboardType="numeric"
             maxLength={10}
           />
-          <Text style={styles.helperText}>Format: Tanggal/Bulan/Tahun</Text>
+          <Text style={styles.helperText}>Format: DD/MM/YYYY</Text>
           {errors.tglLahir && (
             <Text style={styles.errorText}>{errors.tglLahir}</Text>
           )}
         </View>
 
-        {/* Camera Button */}
+        {/* Camera */}
         <TouchableOpacity
-          style={[styles.cameraButton]}
+          style={styles.cameraButton}
           onPress={takePhoto}
           activeOpacity={0.8}
         >
           <Text style={styles.cameraButtonText}>📷 Ambil Foto Peserta</Text>
         </TouchableOpacity>
 
-        {/* Info Text */}
         <Text style={styles.infoText}>
           Pastikan semua data sudah benar sebelum mengambil foto. Foto akan
           digunakan untuk identifikasi peserta.

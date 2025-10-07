@@ -4,30 +4,37 @@ import {
   getAccessToken,
   getRefreshToken,
   saveTokens,
+  clearTokens,
 } from '../utils/authStorage';
 
 const BASE_URL =
   Platform.OS === 'android'
-    ? 'http://192.168.43.15:5000'
-      // 'http://10.0.2.2:5000'
+    ? 'http://192.168.1.12:5000'
     : 'http://localhost:5000';
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 10000,
 });
 
 // === Interceptor Request ===
-api.interceptors.request.use(async config => {
-  const token = await getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+api.interceptors.request.use(
+  async config => {
+    const token = await getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => Promise.reject(error),
+);
 
 // === Interceptor Response ===
 let isRefreshing = false;
-let failedQueue: any[] = [];
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
 
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach(prom => {
@@ -45,7 +52,9 @@ api.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
 
+    // Check jika error 401 dan bukan retry request
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Jika sudah dalam proses refresh, tambahkan ke queue
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -62,25 +71,59 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = await getRefreshToken();
-        if (!refreshToken) throw new Error('No refresh token found');
 
-        const res = await axios.post(`${BASE_URL}/api/auth/refresh-token`, {
-          refreshToken,
-        });
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
 
-        const newAccessToken = res.data.data.accessToken;
-        const newRefreshToken = res.data.data.refreshToken;
+        // PENTING: Kirim refresh token di header Authorization
+        console.log('🔄 Attempting to refresh token...');
 
-        await saveTokens(newAccessToken, newRefreshToken);
+        const response = await axios.post(
+          `${BASE_URL}/api/auth/refresh-token`,
+          {}, // Body kosong
+          {
+            headers: {
+              Authorization: `Bearer ${refreshToken}`,
+            },
+          },
+        );
 
-        api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
-        processQueue(null, newAccessToken);
+        console.log('✅ Token refreshed successfully');
 
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        const { accessToken, refreshToken: newRefreshToken } =
+          response.data.data;
+
+        // Simpan token baru
+        await saveTokens(
+          accessToken,
+          newRefreshToken || refreshToken, // Gunakan refresh token lama jika tidak ada yang baru
+        );
+
+        // Update default header
+        api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+
+        // Process queue dengan token baru
+        processQueue(null, accessToken);
+
+        // Retry original request dengan token baru
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
-      } catch (err) {
-        processQueue(err, null);
-        return Promise.reject(err);
+      } catch (refreshError: any) {
+        // Jika refresh token juga gagal/expired
+        console.error(
+          '❌ Token refresh failed:',
+          refreshError.response?.data || refreshError.message,
+        );
+        processQueue(refreshError, null);
+
+        // Clear tokens dan redirect ke login
+        await clearTokens();
+
+        // Anda bisa emit event atau navigate ke login screen
+        // EventEmitter.emit('SESSION_EXPIRED');
+
+        return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }

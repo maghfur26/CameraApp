@@ -1,16 +1,11 @@
 // src/screens/Login/LoginScreen.tsx
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
 import { RootStackParamList } from '../../types/navigationTypes';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { saveTokens, getAccessToken  } from '../../utils/authStorage';
+import { saveTokens, getAccessToken, saveId } from '../../utils/authStorage';
 import styles from './style';
 import api from '../../config/api';
 import axios from 'axios';
@@ -28,7 +23,12 @@ const LoginScreen = () => {
       const res = await api.post('/api/auth/login', { email, password });
 
       if (res) {
-        await saveTokens(res.data.data.accessToken, res.data.data.refreshToken);
+        await saveTokens(
+          res.data.data.accessToken,
+          res.data.data.refreshToken,
+        ).then(() => {
+          saveId(res.data.data.user.id);
+        });
 
         navigation.reset({
           index: 0,

@@ -7,8 +7,10 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types/navigationTypes';
 import { useNavigation } from '@react-navigation/native';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
+import api from '../../config/api';
+import { getId } from '../../utils/authStorage';
 
-const Header = () => {
+const Drawer = () => {
   const [isOpen, setIsOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-250)).current;
   const navigation =
@@ -32,9 +34,29 @@ const Header = () => {
   };
 
   const handleLogout = async () => {
-    await clearTokens().then(() => {
-      navigation.navigate('Login');
-    });
+    try {
+      const id = await getId();
+
+      // Panggil logout ke server terlebih dahulu
+      await api.post('/api/auth/logout', { id });
+
+      // Setelah server clear token, baru hapus token lokal
+      await clearTokens();
+
+      // Navigasi ke halaman login
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Pastikan token lokal tetap dibersihkan walau server gagal merespons
+      await clearTokens();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    }
   };
 
   return (
@@ -47,9 +69,6 @@ const Header = () => {
       {isOpen && (
         <Animated.View style={[styles.drawer, { left: slideAnim }]}>
           <Text style={styles.textHeader}>Menu</Text>
-          <Text>Pengaturan</Text>
-          <Text>Pengaturan</Text>
-          <Text>Pengaturan</Text>
           <TouchableOpacity onPress={handleLogout} style={styles.logout}>
             <MaterialIcons name="logout" size={20} color="white" />
             <Text style={styles.logoutText}>Logout</Text>
@@ -60,4 +79,4 @@ const Header = () => {
   );
 };
 
-export default Header;
+export default Drawer;
