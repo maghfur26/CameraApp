@@ -84,7 +84,7 @@ const PreviewScreen = () => {
         },
       });
 
-      if (res.status === 200) {
+      if (res.status === 201) {
         setUploadProgress(1);
         setTimeout(() => {
           setIsUploading(false);

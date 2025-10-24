@@ -9,12 +9,12 @@ import {
 
 const BASE_URL =
   Platform.OS === 'android'
-    ? 'http://192.168.1.12:5000'
+    ? 'http://192.168.43.15:5000'
     : 'http://localhost:5000';
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 20000,
 });
 
 // === Interceptor Request ===
